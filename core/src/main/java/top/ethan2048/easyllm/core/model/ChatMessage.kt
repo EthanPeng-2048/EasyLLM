@@ -47,16 +47,17 @@ data class ToolFunctionDef(
 
 @Serializable
 data class ChatResponse(
-    val id: String,
-    val model: String,
-    val choices: List<ChatChoice>,
-    val usage: ChatUsage? = null
+    val id: String? = null,
+    val model: String? = null,
+    val choices: List<ChatChoice> = emptyList(),
+    val usage: ChatUsage? = null,
+    val error: ApiError? = null
 )
 
 @Serializable
 data class ChatChoice(
     val index: Int = 0,
-    val message: ChatMessage,
+    val message: ChatMessage? = null,
     @SerialName("finish_reason") val finishReason: String? = null
 )
 
@@ -69,15 +70,16 @@ data class ChatUsage(
 
 @Serializable
 data class ChatStreamChunk(
-    val id: String,
-    val model: String,
-    val choices: List<ChatStreamChoice>
+    val id: String? = null,
+    val model: String? = null,
+    val choices: List<ChatStreamChoice> = emptyList(),
+    val error: ApiError? = null
 )
 
 @Serializable
 data class ChatStreamChoice(
     val index: Int = 0,
-    val delta: ChatStreamDelta,
+    val delta: ChatStreamDelta? = null,
     @SerialName("finish_reason") val finishReason: String? = null
 )
 
@@ -100,4 +102,11 @@ data class ToolCallDelta(
 data class ToolCallFunctionDelta(
     val name: String? = null,
     val arguments: String? = null
+)
+
+@Serializable
+data class ApiError(
+    val message: String? = null,
+    val type: String? = null,
+    val code: String? = null
 )

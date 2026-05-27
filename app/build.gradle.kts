@@ -12,6 +12,15 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("easyllm-release-key.jks")
+            storePassword = "easyllm123"
+            keyAlias = "easyllm"
+            keyPassword = "easyllm123"
+        }
+    }
+
     defaultConfig {
         applicationId = "top.ethan2048.easyllm"
         minSdk = 28
@@ -29,6 +38,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

@@ -5,6 +5,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
@@ -46,14 +49,19 @@ class OpenAiClient(
         val request = buildRequest(requestBody)
 
         val response = httpClient.newCall(request).execute()
-        if (!response.isSuccessful) {
-            throw ApiException("HTTP ${response.code}: ${response.body?.string()}")
-        }
-
         val body = response.body?.string()
             ?: throw ApiException("Empty response body")
 
-        json.decodeFromString<ChatResponse>(body)
+        if (!response.isSuccessful) {
+            throw parseApiError(body, response.code)
+        }
+
+        val chatResponse = json.decodeFromString<ChatResponse>(body)
+        val err = chatResponse.error
+        if (err != null) {
+            throw ApiException(err.message ?: "Unknown error", err.type)
+        }
+        chatResponse
     }
 
     override fun chatStream(
@@ -65,7 +73,8 @@ class OpenAiClient(
 
         val response = httpClient.newCall(request).execute()
         if (!response.isSuccessful) {
-            throw ApiException("HTTP ${response.code}: ${response.body?.string()}")
+            val errorBody = response.body?.string() ?: ""
+            throw parseApiError(errorBody, response.code)
         }
 
         val body = response.body ?: throw ApiException("Empty response body")
@@ -78,7 +87,18 @@ class OpenAiClient(
 
             if (data == "[DONE]") break
 
-            val chunk = json.decodeFromString<ChatStreamChunk>(data)
+            val chunk = try {
+                json.decodeFromString<ChatStreamChunk>(data)
+            } catch (e: Exception) {
+                val error = tryParseError(data)
+                if (error != null) throw error
+                continue
+            }
+
+            chunk.error?.let { chunkErr ->
+                throw ApiException(chunkErr.message ?: "Unknown error", chunkErr.type)
+            }
+
             emit(chunk)
         }
     }.flowOn(Dispatchers.IO)
@@ -128,6 +148,42 @@ class OpenAiClient(
             .post(requestBody.toRequestBody(JSON_MEDIA_TYPE))
             .build()
     }
+
+    private fun parseApiError(body: String, httpCode: Int): ApiException {
+        return try {
+            val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(body)
+            if (jsonElement is JsonObject) {
+                val errorObj = jsonElement["error"]
+                if (errorObj is JsonObject) {
+                    val message = errorObj["message"]?.jsonPrimitive?.content
+                    val type = errorObj["type"]?.jsonPrimitive?.content
+                    ApiException(message ?: "HTTP $httpCode", type)
+                } else {
+                    ApiException("HTTP $httpCode: $body")
+                }
+            } else {
+                ApiException("HTTP $httpCode: $body")
+            }
+        } catch (e: Exception) {
+            ApiException("HTTP $httpCode: $body")
+        }
+    }
+
+    private fun tryParseError(data: String): ApiException? {
+        return try {
+            val jsonElement = kotlinx.serialization.json.Json.parseToJsonElement(data)
+            if (jsonElement is JsonObject) {
+                val errorObj = jsonElement["error"]
+                if (errorObj is JsonObject) {
+                    val message = errorObj["message"]?.jsonPrimitive?.content
+                    val type = errorObj["type"]?.jsonPrimitive?.content
+                    ApiException(message ?: "Unknown error", type)
+                } else null
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
 }
 
-class ApiException(message: String) : Exception(message)
+class ApiException(message: String, val errorType: String? = null) : Exception(message)
