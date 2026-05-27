@@ -1,0 +1,67 @@
+# Auto-generated Android/Gradle/IDE ignores
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.iws
+
+# Gradle
+.gradle/
+**/build/
+/build/
+
+# Local configuration
+local.properties
+keystore.properties
+
+# Signing keys
+*.keystore
+*.jks
+debug.keystore
+
+# Built application files
+*.apk
+*.ap_
+*.aab
+
+# Java
+*.class
+
+# Kotlin
+*.kotlin_module
+out/
+
+# Native build
+.cxx/
+.externalNativeBuild/
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Node
+node_modules/
+
+# Misc
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+*.env
+*.properties
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
