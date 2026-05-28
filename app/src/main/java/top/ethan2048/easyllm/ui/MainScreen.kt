@@ -1,10 +1,14 @@
 package top.ethan2048.easyllm.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,8 +34,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,14 +41,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -61,7 +61,6 @@ import java.util.Locale
 
 private enum class SidebarContent {
     NONE,
-    CONVERSATIONS,
     MCP,
     API
 }
@@ -88,15 +87,41 @@ fun MainScreen(repository: AppRepository) {
 
                 BottomStatusBar(
                     repository = repository,
-                    onExpandSidebar = { showSidebar = true }
+                    onExpandSidebar = {
+                        showSidebar = true
+                        sidebarContent = SidebarContent.NONE
+                    }
                 )
             }
         }
 
+        if (showSidebar) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
+                    .then(
+                        Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            showSidebar = false
+                        }
+                    )
+            )
+        }
+
         AnimatedVisibility(
             visible = showSidebar,
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it })
+            enter = slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(300)
+            ) + fadeIn(animationSpec = tween(300)),
+            exit = slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(300)
+            ) + fadeOut(animationSpec = tween(300)),
+            modifier = Modifier.align(Alignment.TopEnd)
         ) {
             Sidebar(
                 repository = repository,
@@ -109,15 +134,6 @@ fun MainScreen(repository: AppRepository) {
                 }
             )
         }
-
-        if (showSidebar) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.3f))
-                    .clickable { showSidebar = false }
-            )
-        }
     }
 }
 
@@ -127,7 +143,6 @@ private fun BottomStatusBar(
     onExpandSidebar: () -> Unit
 ) {
     val vendors by remember { mutableStateOf(repository.vendors) }
-    var showModelDropdown by remember { mutableStateOf(false) }
 
     val activeVendorId = repository.activeVendorId
     val activeModelConfigId = repository.activeModelConfigId
@@ -154,14 +169,14 @@ private fun BottomStatusBar(
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                    .clickable { showModelDropdown = true }
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            Surface(
+                onClick = { },
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier.height(36.dp)
             ) {
                 Row(
+                    modifier = Modifier.padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -179,61 +194,6 @@ private fun BottomStatusBar(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-
-                DropdownMenu(
-                    expanded = showModelDropdown,
-                    onDismissRequest = { showModelDropdown = false }
-                ) {
-                    if (vendors.isEmpty()) {
-                        DropdownMenuItem(
-                            text = { Text("请先添加供应商") },
-                            onClick = { showModelDropdown = false },
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Key,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        )
-                    } else {
-                        vendors.forEach { vendor ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        vendor.name,
-                                        style = MaterialTheme.typography.titleSmall
-                                    )
-                                },
-                                onClick = { },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Cloud,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            )
-                            vendor.models.forEach { modelConfig ->
-                                DropdownMenuItem(
-                                    text = { Text("  ${modelConfig.name}") },
-                                    onClick = {
-                                        repository.setActiveVendor(vendor.id)
-                                        repository.setActiveModelConfig(modelConfig.id)
-                                        showModelDropdown = false
-                                    },
-                                    leadingIcon = {
-                                        Icon(
-                                            Icons.Default.SmartToy,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -249,7 +209,7 @@ private fun BottomStatusBar(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "Context: 2,340 tokens",
+                    text = "Context: 0 tokens",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -257,15 +217,23 @@ private fun BottomStatusBar(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            IconButton(
+            Surface(
                 onClick = onExpandSidebar,
-                modifier = Modifier.size(44.dp)
+                shape = RoundedCornerShape(50),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(40.dp)
             ) {
-                Icon(
-                    Icons.Default.Menu,
-                    contentDescription = "展开菜单",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Menu,
+                        contentDescription = "展开菜单",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
@@ -280,7 +248,6 @@ private fun Sidebar(
     onNavigateToVendorDetail: (String) -> Unit
 ) {
     val conversations by remember { mutableStateOf(repository.conversations) }
-    val mcpConfigs by remember { mutableStateOf(repository.mcpConfigs) }
 
     Surface(
         modifier = Modifier
@@ -313,42 +280,37 @@ private fun Sidebar(
                     .weight(1f),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Column {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        reverseLayout = true
-                    ) {
-                        item {
-                            HorizontalDivider()
-                            Text(
-                                text = "对话记录",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
+                Column(modifier = Modifier.weight(1f)) {
+                    HorizontalDivider()
+                    Text(
+                        text = "对话记录",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
 
-                        items(conversations.reversed()) { conversation ->
-                            ConversationItem(
-                                conversation = conversation,
-                                isActive = conversation.id == repository.activeConversationId,
-                                onClick = {
-                                    repository.setActiveConversation(conversation.id)
-                                    onClose()
-                                },
-                                onDelete = {
-                                    repository.deleteConversation(conversation.id)
-                                }
-                            )
-                        }
-
-                        if (conversations.isEmpty()) {
-                            item {
-                                Text(
-                                    text = "暂无对话记录",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(16.dp)
+                    if (conversations.isEmpty()) {
+                        Text(
+                            text = "暂无对话记录",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            items(conversations) { conversation ->
+                                ConversationItem(
+                                    conversation = conversation,
+                                    isActive = conversation.id == repository.activeConversationId,
+                                    onClick = {
+                                        repository.setActiveConversation(conversation.id)
+                                        onClose()
+                                    },
+                                    onDelete = {
+                                        repository.deleteConversation(conversation.id)
+                                    }
                                 )
                             }
                         }
@@ -369,6 +331,7 @@ private fun Sidebar(
                         icon = Icons.Default.Extension,
                         title = "MCP 设置",
                         subtitle = "配置模型上下文协议",
+                        isExpanded = sidebarContent == SidebarContent.MCP,
                         onClick = {
                             onContentChange(
                                 if (sidebarContent == SidebarContent.MCP)
@@ -379,10 +342,29 @@ private fun Sidebar(
                         }
                     )
 
+                    if (sidebarContent == SidebarContent.MCP) {
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp)
+                                .padding(horizontal = 8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            McpConfigScreen(
+                                repository = repository,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp)
+                            )
+                        }
+                    }
+
                     SidebarItem(
                         icon = Icons.Default.Key,
                         title = "API 设置",
                         subtitle = "管理供应商和模型",
+                        isExpanded = sidebarContent == SidebarContent.API,
                         onClick = {
                             onContentChange(
                                 if (sidebarContent == SidebarContent.API)
@@ -393,23 +375,23 @@ private fun Sidebar(
                         }
                     )
 
-                    if (sidebarContent == SidebarContent.MCP) {
-                        McpConfigScreen(
-                            repository = repository,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(300.dp)
-                        )
-                    }
-
                     if (sidebarContent == SidebarContent.API) {
-                        ApiConfigScreen(
-                            repository = repository,
-                            onNavigateToVendorDetail = onNavigateToVendorDetail,
+                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(300.dp)
-                        )
+                                .height(200.dp)
+                                .padding(horizontal = 8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            ApiConfigScreen(
+                                repository = repository,
+                                onNavigateToVendorDetail = onNavigateToVendorDetail,
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -478,32 +460,45 @@ private fun SidebarItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
+    isExpanded: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .clickable(onClick = onClick),
+        color = if (isExpanded)
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        else
+            MaterialTheme.colorScheme.surface
     ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = if (isExpanded)
+                    MaterialTheme.colorScheme.primary
+                else
+                    MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

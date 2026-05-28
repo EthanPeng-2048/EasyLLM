@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -57,14 +58,12 @@ fun ChatScreen(
     val listState = rememberLazyListState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 自动滚动到底部
     LaunchedEffect(state.messages.size, state.isStreaming) {
         if (state.messages.isNotEmpty()) {
             listState.animateScrollToItem(state.messages.size - 1)
         }
     }
 
-    // 显示错误
     LaunchedEffect(state.error) {
         state.error?.let {
             snackbarHostState.showSnackbar(it)
@@ -72,71 +71,74 @@ fun ChatScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-        Box(modifier = Modifier.weight(1f)) {
-            if (state.messages.isEmpty()) {
-                // 空状态提示
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "开始一段新的对话",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(state.messages, key = { it.id }) { msg ->
-                        MessageItem(msg)
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surfaceVariant
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.weight(1f)) {
+                if (state.messages.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "开始一段新的对话",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(state.messages, key = { it.id }) { msg ->
+                            MessageItem(msg)
+                        }
                     }
                 }
             }
-        }
 
-        // 输入区域
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .imePadding()
-                .padding(8.dp),
-            verticalAlignment = Alignment.Bottom
-        ) {
-            OutlinedTextField(
-                value = state.inputText,
-                onValueChange = { viewModel.onInputChanged(it) },
-                modifier = Modifier.weight(1f),
-                placeholder = { Text("输入消息...") },
-                shape = RoundedCornerShape(20.dp),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(onSend = { viewModel.sendMessage() }),
-                maxLines = 4,
-                enabled = !state.isStreaming
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            IconButton(
-                onClick = { viewModel.sendMessage() },
-                enabled = state.inputText.isNotBlank() && !state.isStreaming,
-                modifier = Modifier.size(48.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.Bottom
             ) {
-                if (state.isStreaming) {
-                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                } else {
-                    Icon(
-                        Icons.AutoMirrored.Filled.Send,
-                        contentDescription = "发送",
-                        tint = if (state.inputText.isNotBlank())
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                OutlinedTextField(
+                    value = state.inputText,
+                    onValueChange = { viewModel.onInputChanged(it) },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("输入消息...") },
+                    shape = RoundedCornerShape(20.dp),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                    keyboardActions = KeyboardActions(onSend = { viewModel.sendMessage() }),
+                    maxLines = 4,
+                    enabled = !state.isStreaming
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = { viewModel.sendMessage() },
+                    enabled = state.inputText.isNotBlank() && !state.isStreaming,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    if (state.isStreaming) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                    } else {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "发送",
+                            tint = if (state.inputText.isNotBlank())
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -176,7 +178,6 @@ private fun MessageItem(message: ChatUiMessage) {
                 fontFamily = FontFamily.Monospace
             )
         }
-        // 加载动画
         AnimatedVisibility(
             visible = message.isLoading && message.content.isEmpty(),
             enter = fadeIn(),
