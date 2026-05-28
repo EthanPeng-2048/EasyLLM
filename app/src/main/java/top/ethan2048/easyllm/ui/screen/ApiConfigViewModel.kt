@@ -7,15 +7,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import top.ethan2048.easyllm.core.model.ApiConfig
+import top.ethan2048.easyllm.core.model.Vendor
 import top.ethan2048.easyllm.data.AppRepository
 import java.util.UUID
 
 data class ApiConfigUiState(
-    val configs: List<ApiConfig> = emptyList(),
+    val vendors: List<Vendor> = emptyList(),
     val showDialog: Boolean = false,
-    val editingConfig: ApiConfig? = null,
-    val testResult: String? = null
+    val editingVendor: Vendor? = null
 )
 
 class ApiConfigViewModel(
@@ -30,91 +29,68 @@ class ApiConfigViewModel(
     }
 
     fun refresh() {
-        _uiState.value = _uiState.value.copy(configs = repository.apiConfigs)
+        _uiState.value = _uiState.value.copy(vendors = repository.vendors)
     }
 
     fun showAddDialog() {
         _uiState.value = _uiState.value.copy(
             showDialog = true,
-            editingConfig = null,
-            testResult = null
+            editingVendor = null
         )
     }
 
-    fun showEditDialog(config: ApiConfig) {
+    fun showEditDialog(vendor: Vendor) {
         _uiState.value = _uiState.value.copy(
             showDialog = true,
-            editingConfig = config,
-            testResult = null
+            editingVendor = vendor
         )
     }
 
     fun dismissDialog() {
         _uiState.value = _uiState.value.copy(
             showDialog = false,
-            editingConfig = null,
-            testResult = null
+            editingVendor = null
         )
     }
 
-    fun saveConfig(
+    fun saveVendor(
         name: String,
         endpoint: String,
-        apiKey: String,
-        model: String,
-        maxTokens: Int,
-        temperature: Float
+        apiKey: String
     ) {
-        val existing = _uiState.value.editingConfig
-        val config = if (existing != null) {
+        val existing = _uiState.value.editingVendor
+        val vendor = if (existing != null) {
             existing.copy(
                 name = name,
                 endpoint = endpoint.trimEnd('/'),
-                apiKey = apiKey,
-                model = model,
-                maxTokens = maxTokens,
-                temperature = temperature
+                apiKey = apiKey
             )
         } else {
-            ApiConfig(
+            Vendor(
                 id = UUID.randomUUID().toString(),
                 name = name,
                 endpoint = endpoint.trimEnd('/'),
                 apiKey = apiKey,
-                model = model,
-                maxTokens = maxTokens,
-                temperature = temperature
+                models = emptyList()
             )
         }
 
         if (existing != null) {
-            repository.updateApiConfig(config)
+            repository.updateVendor(vendor)
         } else {
-            repository.addApiConfig(config)
+            repository.addVendor(vendor)
         }
         dismissDialog()
         refresh()
     }
 
-    fun deleteConfig(configId: String) {
-        repository.deleteApiConfig(configId)
+    fun deleteVendor(vendorId: String) {
+        repository.deleteVendor(vendorId)
         refresh()
     }
 
-    fun setActive(configId: String) {
-        repository.setActiveApiConfig(configId)
-        refresh()
-    }
-
-    fun testConnection(config: ApiConfig) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(testResult = "测试中...")
-            val api = repository.getChatApi(config.id)
-            val result = api.testConnection()
-            _uiState.value = _uiState.value.copy(
-                testResult = if (result.isSuccess) "连接成功 ✅" else "连接失败: ${result.exceptionOrNull()?.message}"
-            )
-        }
+    fun setActive(vendorId: String) {
+        repository.setActiveVendor(vendorId)
     }
 
     class Factory(private val repository: AppRepository) : ViewModelProvider.Factory {

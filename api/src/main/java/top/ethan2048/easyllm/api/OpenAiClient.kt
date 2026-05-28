@@ -21,6 +21,8 @@ import top.ethan2048.easyllm.core.model.ApiConfig
 import top.ethan2048.easyllm.core.model.ChatMessage
 import top.ethan2048.easyllm.core.model.ChatResponse
 import top.ethan2048.easyllm.core.model.ChatStreamChunk
+import top.ethan2048.easyllm.core.model.Model
+import top.ethan2048.easyllm.core.model.ModelListResponse
 import top.ethan2048.easyllm.core.model.ToolDefinition
 
 /**
@@ -112,6 +114,29 @@ class OpenAiClient(
 
         val response = httpClient.newCall(request).execute()
         response.isSuccessful
+    }
+
+    override suspend fun getModels(): Result<List<Model>> = runCatching {
+        val request = Request.Builder()
+            .url("${config.endpoint.trimEnd('/')}/models")
+            .addHeader("Authorization", "Bearer ${config.apiKey}")
+            .get()
+            .build()
+
+        val response = httpClient.newCall(request).execute()
+        val body = response.body?.string()
+            ?: throw ApiException("Empty response body")
+
+        if (!response.isSuccessful) {
+            throw parseApiError(body, response.code)
+        }
+
+        val modelListResponse = json.decodeFromString<ModelListResponse>(body)
+        val err = modelListResponse.error
+        if (err != null) {
+            throw ApiException(err.message ?: "Unknown error", err.type)
+        }
+        modelListResponse.data
     }
 
     private fun buildRequestBody(

@@ -5,6 +5,7 @@ import top.ethan2048.easyllm.core.model.ApiConfig
 import top.ethan2048.easyllm.core.model.ChatMessage
 import top.ethan2048.easyllm.core.model.ChatResponse
 import top.ethan2048.easyllm.core.model.ChatStreamChunk
+import top.ethan2048.easyllm.core.model.Model
 import top.ethan2048.easyllm.core.model.ToolDefinition
 
 /**
@@ -29,4 +30,7 @@ interface IChatApi {
 
     /** 测试连接是否可用 */
     suspend fun testConnection(): Result<Boolean>
+
+    /** 获取模型列表 */
+    suspend fun getModels(): Result<List<Model>>
 }

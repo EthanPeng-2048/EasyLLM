@@ -25,7 +25,7 @@ data class ChatUiState(
     val inputText: String = "",
     val isStreaming: Boolean = false,
     val error: String? = null,
-    val selectedApiName: String? = null
+    val selectedModelName: String? = null
 )
 
 class ChatViewModel(
@@ -36,7 +36,7 @@ class ChatViewModel(
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     init {
-        updateApiName()
+        updateModelName()
     }
 
     fun onInputChanged(text: String) {
@@ -49,7 +49,7 @@ class ChatViewModel(
 
         val chatApi = repository.getActiveChatApi()
         if (chatApi == null) {
-            _uiState.value = _uiState.value.copy(error = "请先在 API 配置中选择一个配置")
+            _uiState.value = _uiState.value.copy(error = "请先在 API 配置中选择一个供应商和模型")
             return
         }
 
@@ -106,20 +106,27 @@ class ChatViewModel(
     }
 
     fun clearMessages() {
-        _uiState.value = ChatUiState(selectedApiName = _uiState.value.selectedApiName)
-        updateApiName()
+        _uiState.value = ChatUiState(selectedModelName = _uiState.value.selectedModelName)
+        updateModelName()
     }
 
-    fun refreshApiName() {
-        updateApiName()
+    fun refreshModelName() {
+        updateModelName()
     }
 
-    private fun updateApiName() {
-        val configId = repository.activeApiConfigId
-        val name = configId?.let { id ->
-            repository.apiConfigs.find { it.id == id }?.name
-        }
-        _uiState.value = _uiState.value.copy(selectedApiName = name)
+    private fun updateModelName() {
+        val vendorId = repository.activeVendorId
+        val modelConfigId = repository.activeModelConfigId
+        
+        val name = if (vendorId != null && modelConfigId != null) {
+            val vendor = repository.getVendor(vendorId)
+            val modelConfig = vendor?.models?.find { it.id == modelConfigId }
+            if (vendor != null && modelConfig != null) {
+                "${vendor.name} - ${modelConfig.name}"
+            } else null
+        } else null
+        
+        _uiState.value = _uiState.value.copy(selectedModelName = name)
     }
 
     private fun buildChatMessages(uiMessages: List<ChatUiMessage>): List<ChatMessage> {

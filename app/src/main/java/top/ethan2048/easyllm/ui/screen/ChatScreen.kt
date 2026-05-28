@@ -33,8 +33,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -45,8 +43,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -93,9 +89,9 @@ fun ChatScreen(
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f)
             )
-            if (state.selectedApiName != null) {
+            if (state.selectedModelName != null) {
                 Text(
-                    text = state.selectedApiName!!,
+                    text = state.selectedModelName!!,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -181,7 +177,6 @@ fun ChatScreen(
 @Composable
 private fun MessageItem(message: ChatUiMessage) {
     val isUser = message.role == MessageRole.USER
-    val alignment = if (isUser) Alignment.End else Alignment.Start
     val bgColor = if (isUser)
         MaterialTheme.colorScheme.primaryContainer
     else

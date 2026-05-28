@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
@@ -24,13 +22,11 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,12 +36,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import top.ethan2048.easyllm.core.model.ApiConfig
+import top.ethan2048.easyllm.core.model.Vendor
 import top.ethan2048.easyllm.data.AppRepository
 
 @Composable
 fun ApiConfigScreen(
     repository: AppRepository,
+    onNavigateToVendorDetail: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ApiConfigViewModel = viewModel(factory = ApiConfigViewModel.Factory(repository))
 ) {
@@ -60,13 +57,13 @@ fun ApiConfigScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "API 配置",
+                text = "供应商",
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        if (state.configs.isEmpty()) {
+        if (state.vendors.isEmpty()) {
             // 空状态
             Column(
                 modifier = Modifier
@@ -77,13 +74,13 @@ fun ApiConfigScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "还没有 API 配置",
+                    text = "还没有供应商",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "点击右下角 + 添加 OpenAI 兼容 API",
+                    text = "点击右下角 + 添加供应商",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -95,14 +92,17 @@ fun ApiConfigScreen(
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(state.configs, key = { it.id }) { config ->
-                    ApiConfigCard(
-                        config = config,
-                        isActive = config.id == repository.activeApiConfigId,
-                        onSelect = { viewModel.setActive(config.id) },
-                        onEdit = { viewModel.showEditDialog(config) },
-                        onDelete = { viewModel.deleteConfig(config.id) },
-                        onTest = { viewModel.testConnection(config) }
+                items(state.vendors, key = { it.id }) { vendor ->
+                    VendorCard(
+                        vendor = vendor,
+                        isActive = vendor.id == repository.activeVendorId,
+                        onSelect = {
+                            viewModel.setActive(vendor.id)
+                            onNavigateToVendorDetail(vendor.id)
+                        },
+                        onEdit = { viewModel.showEditDialog(vendor) },
+                        onDelete = { viewModel.deleteVendor(vendor.id) },
+                        onClick = { onNavigateToVendorDetail(vendor.id) }
                     )
                 }
             }
@@ -113,30 +113,30 @@ fun ApiConfigScreen(
             onClick = { viewModel.showAddDialog() },
             modifier = Modifier.padding(16.dp)
         ) {
-            Icon(Icons.Default.Add, contentDescription = "添加配置")
+            Icon(Icons.Default.Add, contentDescription = "添加供应商")
         }
     }
 
     // 编辑对话框
     if (state.showDialog) {
-        ConfigDialog(
-            config = state.editingConfig,
+        VendorDialog(
+            vendor = state.editingVendor,
             onDismiss = { viewModel.dismissDialog() },
-            onSave = { name, endpoint, apiKey, model, maxTokens, temp ->
-                viewModel.saveConfig(name, endpoint, apiKey, model, maxTokens, temp)
+            onSave = { name, endpoint, apiKey ->
+                viewModel.saveVendor(name, endpoint, apiKey)
             }
         )
     }
 }
 
 @Composable
-private fun ApiConfigCard(
-    config: ApiConfig,
+private fun VendorCard(
+    vendor: Vendor,
     isActive: Boolean,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
-    onTest: () -> Unit
+    onClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -146,7 +146,7 @@ private fun ApiConfigCard(
             else
                 MaterialTheme.colorScheme.surface
         ),
-        onClick = onSelect
+        onClick = onClick
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -156,27 +156,24 @@ private fun ApiConfigCard(
                 selected = isActive,
                 onClick = onSelect
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.padding(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = config.name,
+                    text = vendor.name,
                     style = MaterialTheme.typography.titleMedium
                 )
                 Text(
-                    text = config.model,
+                    text = vendor.endpoint,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = config.endpoint,
+                    text = "模型数量: ${vendor.models.size}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Column {
-                IconButton(onClick = onTest) {
-                    Icon(Icons.Default.Check, contentDescription = "测试连接", tint = MaterialTheme.colorScheme.primary)
-                }
                 IconButton(onClick = onEdit) {
                     Icon(Icons.Default.Edit, contentDescription = "编辑")
                 }
@@ -189,23 +186,20 @@ private fun ApiConfigCard(
 }
 
 @Composable
-private fun ConfigDialog(
-    config: ApiConfig?,
+private fun VendorDialog(
+    vendor: Vendor?,
     onDismiss: () -> Unit,
-    onSave: (String, String, String, String, Int, Float) -> Unit
+    onSave: (String, String, String) -> Unit
 ) {
-    var name by remember { mutableStateOf(config?.name ?: "") }
-    var endpoint by remember { mutableStateOf(config?.endpoint ?: "") }
-    var apiKey by remember { mutableStateOf(config?.apiKey ?: "") }
-    var model by remember { mutableStateOf(config?.model ?: "gpt-4o") }
-    var maxTokens by remember { mutableStateOf(config?.maxTokens?.toString() ?: "4096") }
-    var temperature by remember { mutableStateOf(config?.temperature?.toString() ?: "0.7") }
+    var name by remember { mutableStateOf(vendor?.name ?: "") }
+    var endpoint by remember { mutableStateOf(vendor?.endpoint ?: "") }
+    var apiKey by remember { mutableStateOf(vendor?.apiKey ?: "") }
 
-    val isEditing = config != null
+    val isEditing = vendor != null
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isEditing) "编辑 API 配置" else "添加 API 配置") },
+        title = { Text(if (isEditing) "编辑供应商" else "添加供应商") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -215,6 +209,7 @@ private fun ConfigDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("名称") },
+                    placeholder = { Text("例如: OpenAI") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -233,46 +228,12 @@ private fun ConfigDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    label = { Text("模型") },
-                    placeholder = { Text("gpt-4o") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = maxTokens,
-                        onValueChange = { maxTokens = it },
-                        label = { Text("Max Tokens") },
-                        singleLine = true,
-                        modifier = Modifier.width(160.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    OutlinedTextField(
-                        value = temperature,
-                        onValueChange = { temperature = it },
-                        label = { Text("温度") },
-                        singleLine = true,
-                        modifier = Modifier.width(120.dp)
-                    )
-                }
             }
         },
         confirmButton = {
             Button(
-                onClick = {
-                    onSave(
-                        name,
-                        endpoint,
-                        apiKey,
-                        model,
-                        maxTokens.toIntOrNull() ?: 4096,
-                        temperature.toFloatOrNull() ?: 0.7f
-                    )
-                },
-                enabled = name.isNotBlank() && endpoint.isNotBlank() && apiKey.isNotBlank() && model.isNotBlank()
+                onClick = { onSave(name, endpoint, apiKey) },
+                enabled = name.isNotBlank() && endpoint.isNotBlank() && apiKey.isNotBlank()
             ) {
                 Text("保存")
             }
