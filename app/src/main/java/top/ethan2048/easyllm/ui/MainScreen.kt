@@ -56,7 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import top.ethan2048.easyllm.core.model.Vendor
+import top.ethan2048.easyllm.core.domain.model.Vendor
 import top.ethan2048.easyllm.data.AppRepository
 import top.ethan2048.easyllm.ui.screen.ApiConfigScreen
 import top.ethan2048.easyllm.ui.screen.ChatScreen
@@ -523,7 +523,7 @@ private fun Sidebar(
 
 @Composable
 private fun ConversationItem(
-    conversation: top.ethan2048.easyllm.core.model.Conversation,
+    conversation: top.ethan2048.easyllm.core.domain.model.Conversation,
     isActive: Boolean,
     onClick: () -> Unit,
     onDelete: () -> Unit

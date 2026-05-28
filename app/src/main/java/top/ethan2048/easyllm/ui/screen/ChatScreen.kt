@@ -47,7 +47,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import top.ethan2048.easyllm.core.model.MessageRole
+import top.ethan2048.easyllm.core.domain.model.MessageRole
 import top.ethan2048.easyllm.data.AppRepository
 
 @Composable

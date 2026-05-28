@@ -4,8 +4,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import top.ethan2048.easyllm.core.model.McpServerCapabilities
-import top.ethan2048.easyllm.core.model.McpServerInfo
+import top.ethan2048.easyllm.core.domain.model.McpServerCapabilities
+import top.ethan2048.easyllm.core.domain.model.mcp.McpServerInfo
 import top.ethan2048.easyllm.mcp.transport.McpTransport
 import top.ethan2048.easyllm.mcp.transport.TransportException
 

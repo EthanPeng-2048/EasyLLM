@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import top.ethan2048.easyllm.core.model.ChatMessage
-import top.ethan2048.easyllm.core.model.MessageRole
-import top.ethan2048.easyllm.core.model.ToolDefinition
-import top.ethan2048.easyllm.core.model.ToolFunctionDef
+import top.ethan2048.easyllm.core.domain.model.ChatMessage
+import top.ethan2048.easyllm.core.domain.model.MessageRole
+import top.ethan2048.easyllm.core.domain.model.ToolDefinition
+import top.ethan2048.easyllm.core.domain.model.ToolFunctionDef
 import top.ethan2048.easyllm.data.AppRepository
 import java.util.UUID
 
@@ -112,7 +112,7 @@ class ChatViewModel(
         } else {
             val firstUserMsg = messages.firstOrNull { it.role == MessageRole.USER }
             val title = firstUserMsg?.content?.take(30)?.replace("\n", " ") ?: "新对话"
-            val conversation = top.ethan2048.easyllm.core.model.Conversation(
+            val conversation = top.ethan2048.easyllm.core.domain.model.Conversation(
                 id = UUID.randomUUID().toString(),
                 title = title,
                 messages = chatMessages

@@ -1,4 +1,4 @@
-package top.ethan2048.easyllm.core.model
+package top.ethan2048.easyllm.core.domain.model
 
 import kotlinx.serialization.Serializable
 

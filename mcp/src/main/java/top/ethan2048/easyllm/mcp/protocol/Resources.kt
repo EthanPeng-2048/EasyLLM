@@ -4,9 +4,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import top.ethan2048.easyllm.core.model.McpResource
-import top.ethan2048.easyllm.core.model.McpResourceContent
-import top.ethan2048.easyllm.core.model.McpResourceTemplate
+import top.ethan2048.easyllm.core.domain.model.mcp.McpResource
+import top.ethan2048.easyllm.core.domain.model.mcp.McpResourceContent
+import top.ethan2048.easyllm.core.domain.model.mcp.McpResourceTemplate
 import top.ethan2048.easyllm.mcp.transport.McpTransport
 
 /**

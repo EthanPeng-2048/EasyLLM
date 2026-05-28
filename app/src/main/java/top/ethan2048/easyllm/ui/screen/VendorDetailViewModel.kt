@@ -7,9 +7,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import top.ethan2048.easyllm.core.model.Model
-import top.ethan2048.easyllm.core.model.ModelConfig
-import top.ethan2048.easyllm.core.model.Vendor
+import top.ethan2048.easyllm.core.domain.model.Model
+import top.ethan2048.easyllm.core.domain.model.ModelConfig
+import top.ethan2048.easyllm.core.domain.model.Vendor
 import top.ethan2048.easyllm.data.AppRepository
 import java.util.UUID
 
