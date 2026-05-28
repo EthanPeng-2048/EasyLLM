@@ -7,7 +7,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import top.ethan2048.easyllm.core.model.McpPrompt
 import top.ethan2048.easyllm.core.model.McpPromptMessage
 import top.ethan2048.easyllm.core.model.McpPromptResult
-import top.ethan2048.easyllm.mcp.transport.StreamableHttpTransport
+import top.ethan2048.easyllm.mcp.transport.McpTransport
 
 /**
  * MCP Prompts 协议实现
@@ -15,7 +15,7 @@ import top.ethan2048.easyllm.mcp.transport.StreamableHttpTransport
  * 对应 MCP 规范中的 prompts/list 和 prompts/get 方法。
  * 用于发现和获取提示模板（Prompt Templates）。
  */
-class PromptsProtocol(private val transport: StreamableHttpTransport) {
+class PromptsProtocol(private val transport: McpTransport) {
 
     private val json = Json {
         ignoreUnknownKeys = true

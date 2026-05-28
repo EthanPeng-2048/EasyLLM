@@ -10,12 +10,12 @@ import kotlinx.serialization.json.put
 import top.ethan2048.easyllm.core.model.McpContent
 import top.ethan2048.easyllm.core.model.McpTool
 import top.ethan2048.easyllm.core.model.McpToolResult
-import top.ethan2048.easyllm.mcp.transport.StreamableHttpTransport
+import top.ethan2048.easyllm.mcp.transport.McpTransport
 
 /**
  * MCP Tools 协议实现
  */
-class ToolsProtocol(private val transport: StreamableHttpTransport) {
+class ToolsProtocol(private val transport: McpTransport) {
 
     private val json = Json {
         ignoreUnknownKeys = true

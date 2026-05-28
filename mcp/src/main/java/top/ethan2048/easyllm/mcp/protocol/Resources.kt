@@ -7,12 +7,12 @@ import kotlinx.serialization.json.jsonPrimitive
 import top.ethan2048.easyllm.core.model.McpResource
 import top.ethan2048.easyllm.core.model.McpResourceContent
 import top.ethan2048.easyllm.core.model.McpResourceTemplate
-import top.ethan2048.easyllm.mcp.transport.StreamableHttpTransport
+import top.ethan2048.easyllm.mcp.transport.McpTransport
 
 /**
  * MCP Resources 协议实现
  */
-class ResourcesProtocol(private val transport: StreamableHttpTransport) {
+class ResourcesProtocol(private val transport: McpTransport) {
 
     private val json = Json {
         ignoreUnknownKeys = true

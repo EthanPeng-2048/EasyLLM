@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -29,7 +30,7 @@ class StreamableHttpTransport(
     private val endpoint: String,
     private val customHeaders: Map<String, String> = emptyMap(),
     private val httpClient: OkHttpClient = OkHttpClient()
-) {
+) : McpTransport {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -37,53 +38,56 @@ class StreamableHttpTransport(
 
     companion object {
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
-        const val MCP_PROTOCOL_VERSION = "2025-06-18"
-        const val HEADER_SESSION_ID = "Mcp-Session-Id"
-        const val HEADER_PROTOCOL_VERSION = "MCP-Protocol-Version"
+        private const val HEADER_SESSION_ID = "MCP-Session-Id"
+        private const val HEADER_PROTOCOL_VERSION = "MCP-Protocol-Version"
     }
 
-    var sessionId: String? = null
-        private set
+    override val protocolVersion: String = "2025-06-18"
+
+    override var sessionId: String? = null
 
     /**
      * 发送 JSON-RPC 请求，返回单个响应
      * 用于需要精确匹配请求-响应的调用（如 initialize, tools/list）
      */
-    suspend fun sendRequest(request: JsonRpcRequest): Result<JsonRpcResponse> = runCatching {
-        val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
-        val httpRequest = buildPostRequest(requestJson)
+    override suspend fun sendRequest(request: JsonRpcRequest): Result<JsonRpcResponse> = withContext(Dispatchers.IO) {
+        runCatching {
+            val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
+            val httpRequest = buildPostRequest(requestJson)
 
-        val httpResponse = httpClient.newCall(httpRequest).execute()
+            val httpResponse = httpClient.newCall(httpRequest).execute()
 
-        // 提取 session ID
-        extractSessionId(httpResponse)
+            // 提取 session ID
+            extractSessionId(httpResponse)
 
-        if (!httpResponse.isSuccessful) {
-            // HTTP 404 表示会话已过期
-            if (httpResponse.code == 404 && sessionId != null) {
-                sessionId = null
-                throw TransportException("Session expired (HTTP 404). Re-initialization required.")
+            if (!httpResponse.isSuccessful) {
+                val errorBody = httpResponse.body?.string() ?: ""
+                // HTTP 404 表示会话已过期
+                if (httpResponse.code == 404 && sessionId != null) {
+                    sessionId = null
+                    throw TransportException("Session expired (HTTP 404). Re-initialization required. Response: $errorBody")
+                }
+                throw TransportException("HTTP ${httpResponse.code} (url: $endpoint): $errorBody")
             }
-            throw TransportException("HTTP ${httpResponse.code}: ${httpResponse.body?.string()}")
-        }
 
-        val contentType = httpResponse.header("Content-Type", "")
+            val contentType = httpResponse.header("Content-Type", "")
 
-        when {
-            contentType?.contains("text/event-stream") == true -> {
-                // SSE 响应 - 读取第一个匹配的响应
-                val sseResponse = readSseResponse(httpResponse, request.id?.value)
-                sseResponse ?: throw TransportException("No matching response found in SSE stream")
-            }
-            contentType?.contains("application/json") == true -> {
-                val body = httpResponse.body?.string()
-                    ?: throw TransportException("Empty response body")
-                json.decodeFromString(JsonRpcResponse.serializer(), body)
-            }
-            else -> {
-                val body = httpResponse.body?.string()
-                    ?: throw TransportException("Empty response body")
-                json.decodeFromString(JsonRpcResponse.serializer(), body)
+            when {
+                contentType?.contains("text/event-stream") == true -> {
+                    // SSE 响应 - 读取第一个匹配的响应
+                    val sseResponse = readSseResponse(httpResponse, request.id?.value)
+                    sseResponse ?: throw TransportException("No matching response found in SSE stream")
+                }
+                contentType?.contains("application/json") == true -> {
+                    val body = httpResponse.body?.string()
+                        ?: throw TransportException("Empty response body")
+                    json.decodeFromString(JsonRpcResponse.serializer(), body)
+                }
+                else -> {
+                    val body = httpResponse.body?.string()
+                        ?: throw TransportException("Empty response body")
+                    json.decodeFromString(JsonRpcResponse.serializer(), body)
+                }
             }
         }
     }
@@ -134,16 +138,18 @@ class StreamableHttpTransport(
     /**
      * 发送通知（无 id，不期望响应）
      */
-    suspend fun sendNotification(request: JsonRpcRequest): Result<Unit> = runCatching {
-        val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
-        val httpRequest = buildPostRequest(requestJson)
+    override suspend fun sendNotification(request: JsonRpcRequest): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
+            val httpRequest = buildPostRequest(requestJson)
 
-        val httpResponse = httpClient.newCall(httpRequest).execute()
+            val httpResponse = httpClient.newCall(httpRequest).execute()
 
-        extractSessionId(httpResponse)
+            extractSessionId(httpResponse)
 
-        if (!httpResponse.isSuccessful && httpResponse.code != 202) {
-            throw TransportException("HTTP ${httpResponse.code}")
+            if (!httpResponse.isSuccessful && httpResponse.code != 202) {
+                throw TransportException("HTTP ${httpResponse.code}")
+            }
         }
     }
 
@@ -153,7 +159,7 @@ class StreamableHttpTransport(
      * 返回 SseEvent，可能是 JSON-RPC 响应或通知。
      * 通知包含 method 字段（如 notifications/tools/list_changed）。
      */
-    fun openSseStream(): Flow<SseEvent> = flow {
+    override fun openSseStream(): Flow<SseEvent> = flow {
         val requestBuilder = Request.Builder()
             .url(endpoint)
             .addHeader("Accept", "text/event-stream")
@@ -192,16 +198,18 @@ class StreamableHttpTransport(
     /**
      * 关闭会话 (HTTP DELETE)
      */
-    suspend fun closeSession(): Result<Unit> = runCatching {
-        val sid = sessionId ?: throw TransportException("No active session")
-        val request = Request.Builder()
-            .url(endpoint)
-            .addHeader(HEADER_SESSION_ID, sid)
-            .delete()
-            .build()
+    override suspend fun closeSession(): Result<Unit> = withContext(Dispatchers.IO) {
+        runCatching {
+            val sid = sessionId ?: throw TransportException("No active session")
+            val request = Request.Builder()
+                .url(endpoint)
+                .addHeader(HEADER_SESSION_ID, sid)
+                .delete()
+                .build()
 
-        httpClient.newCall(request).execute().close()
-        sessionId = null
+            httpClient.newCall(request).execute().close()
+            sessionId = null
+        }
     }
 
     // ============ Private Helpers ============
@@ -214,7 +222,7 @@ class StreamableHttpTransport(
             .post(body.toRequestBody(JSON_MEDIA_TYPE))
 
         sessionId?.let { requestBuilder.addHeader(HEADER_SESSION_ID, it) }
-        requestBuilder.addHeader(HEADER_PROTOCOL_VERSION, MCP_PROTOCOL_VERSION)
+        requestBuilder.addHeader(HEADER_PROTOCOL_VERSION, protocolVersion)
         customHeaders.forEach { (k, v) -> requestBuilder.addHeader(k, v) }
 
         return requestBuilder.build()

@@ -6,7 +6,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import top.ethan2048.easyllm.core.model.McpServerCapabilities
 import top.ethan2048.easyllm.core.model.McpServerInfo
-import top.ethan2048.easyllm.mcp.transport.StreamableHttpTransport
+import top.ethan2048.easyllm.mcp.transport.McpTransport
 import top.ethan2048.easyllm.mcp.transport.TransportException
 
 /**
@@ -22,7 +22,7 @@ enum class McpConnectionState {
     SHUTDOWN
 }
 
-class McpLifecycle(private val transport: StreamableHttpTransport) {
+class McpLifecycle(private val transport: McpTransport) {
 
     var state: McpConnectionState = McpConnectionState.UNINITIALIZED
         private set
@@ -44,12 +44,16 @@ class McpLifecycle(private val transport: StreamableHttpTransport) {
 
         // Step 1: 发送 initialize 请求
         val initParams = buildJsonObject {
-            put("protocolVersion", StreamableHttpTransport.MCP_PROTOCOL_VERSION)
+            put("protocolVersion", transport.protocolVersion)
             put("capabilities", buildJsonObject {
-                // 客户端能力声明 - 目前为空
+                // 客户端能力声明
+                put("roots", buildJsonObject { put("listChanged", true) })
+                put("sampling", buildJsonObject {})
+                put("elicitation", buildJsonObject {})
             })
             put("clientInfo", buildJsonObject {
                 put("name", "EasyLLM")
+                put("title", "EasyLLM MCP Client")
                 put("version", "1.0.0")
             })
         }

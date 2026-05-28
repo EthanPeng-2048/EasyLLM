@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import top.ethan2048.easyllm.core.model.McpServerConfig
 import top.ethan2048.easyllm.core.model.McpServerInfo
+import top.ethan2048.easyllm.core.model.McpTransportType
 import top.ethan2048.easyllm.data.AppRepository
 import java.util.UUID
 
@@ -75,7 +76,10 @@ class McpConfigViewModel(
     fun saveConfig(
         name: String,
         endpoint: String,
-        headersJson: String
+        headersJson: String,
+        transportType: McpTransportType = McpTransportType.STREAMABLE_HTTP,
+        ssePath: String = "/sse",
+        messagesPath: String = "/messages/"
     ) {
         val existing = _uiState.value.editingConfig
 
@@ -100,14 +104,20 @@ class McpConfigViewModel(
             existing.copy(
                 name = name,
                 endpoint = endpoint.trimEnd('/'),
-                headers = headers
+                headers = headers,
+                transportType = transportType,
+                ssePath = ssePath,
+                messagesPath = messagesPath
             )
         } else {
             McpServerConfig(
                 id = UUID.randomUUID().toString(),
                 name = name,
                 endpoint = endpoint.trimEnd('/'),
-                headers = headers
+                headers = headers,
+                transportType = transportType,
+                ssePath = ssePath,
+                messagesPath = messagesPath
             )
         }
 

@@ -30,6 +30,9 @@ import top.ethan2048.easyllm.mcp.protocol.PromptsProtocol
 import top.ethan2048.easyllm.mcp.protocol.ResourcesProtocol
 import top.ethan2048.easyllm.mcp.protocol.SseEvent
 import top.ethan2048.easyllm.mcp.protocol.ToolsProtocol
+import top.ethan2048.easyllm.core.model.McpTransportType
+import top.ethan2048.easyllm.mcp.transport.McpTransport
+import top.ethan2048.easyllm.mcp.transport.SseTransport
 import top.ethan2048.easyllm.mcp.transport.StreamableHttpTransport
 
 /**
@@ -57,11 +60,25 @@ class McpClient(
         // 如果已存在连接，先断开
         disconnect(config.id)
 
-        val transport = StreamableHttpTransport(
-            endpoint = config.endpoint,
-            customHeaders = config.headers,
-            httpClient = httpClient
-        )
+        val transport: McpTransport = when (config.transportType) {
+            McpTransportType.STREAMABLE_HTTP -> StreamableHttpTransport(
+                endpoint = config.endpoint,
+                customHeaders = config.headers,
+                httpClient = httpClient
+            )
+            McpTransportType.SSE -> {
+                val sseTransport = SseTransport(
+                    endpoint = config.endpoint,
+                    ssePath = config.ssePath,
+                    messagesPath = config.messagesPath,
+                    customHeaders = config.headers,
+                    httpClient = httpClient
+                )
+                // SSE 模式下需要先建立 SSE 连接获取 sessionId
+                sseTransport.connect().getOrThrow()
+                sseTransport
+            }
+        }
 
         val lifecycle = McpLifecycle(transport)
         val toolsProtocol = ToolsProtocol(transport)
@@ -217,7 +234,7 @@ class McpClient(
  */
 private class McpSession(
     val config: McpServerConfig,
-    val transport: StreamableHttpTransport,
+    val transport: McpTransport,
     val lifecycle: McpLifecycle,
     val toolsProtocol: ToolsProtocol,
     val resourcesProtocol: ResourcesProtocol,

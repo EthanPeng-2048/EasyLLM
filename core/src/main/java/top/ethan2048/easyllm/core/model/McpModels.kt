@@ -6,11 +6,22 @@ import kotlinx.serialization.json.JsonObject
 // ============ MCP Server Config ============
 
 @Serializable
+enum class McpTransportType {
+    @kotlinx.serialization.SerialName("streamable_http")
+    STREAMABLE_HTTP,
+    @kotlinx.serialization.SerialName("sse")
+    SSE
+}
+
+@Serializable
 data class McpServerConfig(
     val id: String,
     val name: String,
     val endpoint: String,           // e.g. "https://example.com/mcp"
-    val headers: Map<String, String> = emptyMap()
+    val headers: Map<String, String> = emptyMap(),
+    val transportType: McpTransportType = McpTransportType.STREAMABLE_HTTP,
+    val ssePath: String = "/sse",
+    val messagesPath: String = "/messages/"
 )
 
 @Serializable

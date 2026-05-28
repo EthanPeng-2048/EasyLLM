@@ -43,9 +43,30 @@ data class JsonRpcError(
 
 // ============ JSON-RPC ID ============
 
-@Serializable
+/**
+ * JSON-RPC 2.0 请求/响应 ID
+ *
+ * 使用自定义序列化器，使 id 在 JSON 中呈现为纯字符串 "1"，
+ * 而非对象 {"value": "1"}，符合 JSON-RPC 规范。
+ */
+@Serializable(with = JsonRpcIdSerializer::class)
 data class JsonRpcId(val value: String) {
     override fun toString() = value
+}
+
+object JsonRpcIdSerializer : kotlinx.serialization.KSerializer<JsonRpcId> {
+    override val descriptor = kotlinx.serialization.descriptors.PrimitiveSerialDescriptor(
+        "JsonRpcId",
+        kotlinx.serialization.descriptors.PrimitiveKind.STRING
+    )
+
+    override fun serialize(encoder: kotlinx.serialization.encoding.Encoder, value: JsonRpcId) {
+        encoder.encodeString(value.value)
+    }
+
+    override fun deserialize(decoder: kotlinx.serialization.encoding.Decoder): JsonRpcId {
+        return JsonRpcId(decoder.decodeString())
+    }
 }
 
 /**

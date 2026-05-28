@@ -29,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import top.ethan2048.easyllm.core.model.McpTransportType
 import top.ethan2048.easyllm.data.AppRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,8 +116,8 @@ fun McpConfigScreen(
         McpConfigDialog(
             config = state.editingConfig,
             onDismiss = { viewModel.dismissDialog() },
-            onSave = { name, endpoint, headers ->
-                viewModel.saveConfig(name, endpoint, headers)
+            onSave = { name, endpoint, headers, transportType, ssePath, messagesPath ->
+                viewModel.saveConfig(name, endpoint, headers, transportType, ssePath, messagesPath)
             }
         )
     }
@@ -156,6 +158,16 @@ private fun McpConfigCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = when (config.transportType) {
+                                top.ethan2048.easyllm.core.model.McpTransportType.STREAMABLE_HTTP -> "Streamable HTTP"
+                                top.ethan2048.easyllm.core.model.McpTransportType.SSE -> "SSE"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
                 Row {
                     if (conn.isConnecting) {
@@ -213,7 +225,7 @@ private fun McpConfigCard(
 private fun McpConfigDialog(
     config: top.ethan2048.easyllm.core.model.McpServerConfig?,
     onDismiss: () -> Unit,
-    onSave: (String, String, String) -> Unit
+    onSave: (String, String, String, McpTransportType, String, String) -> Unit
 ) {
     var name by remember { mutableStateOf(config?.name ?: "") }
     var endpoint by remember { mutableStateOf(config?.endpoint ?: "") }
@@ -222,6 +234,9 @@ private fun McpConfigDialog(
             config?.headers?.entries?.joinToString("\n") { "${it.key}: ${it.value}" } ?: ""
         )
     }
+    var transportType by remember { mutableStateOf(config?.transportType ?: McpTransportType.STREAMABLE_HTTP) }
+    var ssePath by remember { mutableStateOf(config?.ssePath ?: "/sse") }
+    var messagesPath by remember { mutableStateOf(config?.messagesPath ?: "/messages/") }
 
     val isEditing = config != null
 
@@ -248,6 +263,52 @@ private fun McpConfigDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
+
+                // 传输类型选择
+                Text(
+                    text = "传输类型",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = transportType == McpTransportType.STREAMABLE_HTTP,
+                            onClick = { transportType = McpTransportType.STREAMABLE_HTTP }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Streamable HTTP", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = transportType == McpTransportType.SSE,
+                            onClick = { transportType = McpTransportType.SSE }
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("SSE", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                // SSE 模式的额外配置
+                if (transportType == McpTransportType.SSE) {
+                    OutlinedTextField(
+                        value = ssePath,
+                        onValueChange = { ssePath = it },
+                        label = { Text("SSE 路径") },
+                        placeholder = { Text("/sse") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = messagesPath,
+                        onValueChange = { messagesPath = it },
+                        label = { Text("消息路径") },
+                        placeholder = { Text("/messages/") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 OutlinedTextField(
                     value = headers,
                     onValueChange = { headers = it },
@@ -261,7 +322,7 @@ private fun McpConfigDialog(
         },
         confirmButton = {
             Button(
-                onClick = { onSave(name, endpoint, headers) },
+                onClick = { onSave(name, endpoint, headers, transportType, ssePath, messagesPath) },
                 enabled = name.isNotBlank() && endpoint.isNotBlank()
             ) {
                 Text("保存")

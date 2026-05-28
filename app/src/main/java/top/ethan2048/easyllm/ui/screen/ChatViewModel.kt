@@ -8,8 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import top.ethan2048.easyllm.core.model.ChatMessage
 import top.ethan2048.easyllm.core.model.MessageRole
+import top.ethan2048.easyllm.core.model.ToolDefinition
+import top.ethan2048.easyllm.core.model.ToolFunctionDef
 import top.ethan2048.easyllm.data.AppRepository
 import java.util.UUID
 
@@ -161,17 +164,22 @@ class ChatViewModel(
                 )
             )
 
-            val chatMessages = buildChatMessages(_uiState.value.messages)
+            // 收集 MCP 工具和系统提示词
+            val mcpTools = collectMcpTools()
+            val systemMessage = buildMcpSystemMessage()
 
-            chatApi.chatStream(chatMessages)
+            val chatMessages = buildChatMessages(_uiState.value.messages, systemMessage)
+
+            chatApi.chatStream(chatMessages, mcpTools)
                 .catch { e ->
                     updateAssistantMessage(pendingId, "错误: ${e.message}", isLoading = false)
                     _uiState.value = _uiState.value.copy(isStreaming = false, error = e.message)
                 }
                 .collect { chunk ->
-                    val delta = chunk.choices.firstOrNull()?.delta
+                    val choice = chunk.choices.firstOrNull()
+                    val delta = choice?.delta
                     val content = delta?.content ?: ""
-                    val finishReason = chunk.choices.firstOrNull()?.finishReason
+                    val finishReason = choice?.finishReason
 
                     appendToAssistantMessage(pendingId, content)
 
@@ -214,19 +222,101 @@ class ChatViewModel(
         _uiState.value = _uiState.value.copy(selectedModelName = name)
     }
 
-    private fun buildChatMessages(uiMessages: List<ChatUiMessage>): List<ChatMessage> {
+    /**
+     * 从所有已连接的 MCP 服务器收集工具，转换为 OpenAI 兼容的 ToolDefinition
+     */
+    private suspend fun collectMcpTools(): List<ToolDefinition>? {
+        val mcpClient = repository.getMcpClient()
+        val connectedServers = repository.mcpConfigs.filter { mcpClient.isConnected(it.id) }
+        if (connectedServers.isEmpty()) return null
+
+        val tools = mutableListOf<ToolDefinition>()
+        val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        for (server in connectedServers) {
+            val result = runCatching { mcpClient.listTools(server.id).getOrThrow() }
+            result.getOrNull()?.forEach { mcpTool ->
+                val cleanedSchema = cleanToolSchema(mcpTool.inputSchema)
+                tools.add(
+                    ToolDefinition(
+                        type = "function",
+                        function = ToolFunctionDef(
+                            name = mcpTool.name,
+                            description = mcpTool.description,
+                            parameters = if (cleanedSchema.isNotEmpty()) {
+                                json.encodeToString(kotlinx.serialization.json.JsonObject.serializer(), cleanedSchema)
+                            } else null
+                        )
+                    )
+                )
+            }
+        }
+
+        return tools.ifEmpty { null }
+    }
+
+    /**
+     * 清理工具 schema，移除可能导致 AI 验证错误的无效字段
+     */
+    private fun cleanToolSchema(schema: kotlinx.serialization.json.JsonObject): kotlinx.serialization.json.JsonObject {
+        return try {
+            val cleanedMap = schema.toMutableMap()
+            cleanedMap.remove("additionalProperties")
+            cleanedMap.keys.filter { it.startsWith("x-") }.forEach { cleanedMap.remove(it) }
+            kotlinx.serialization.json.JsonObject(cleanedMap)
+        } catch (e: Exception) {
+            kotlinx.serialization.json.JsonObject(emptyMap())
+        }
+    }
+
+    /**
+     * 从已连接的 MCP 服务器收集 instructions，构建系统提示词
+     */
+    private fun buildMcpSystemMessage(): ChatMessage? {
+        val mcpClient = repository.getMcpClient()
+        val connectedServers = repository.mcpConfigs
+            .filter { mcpClient.isConnected(it.id) }
+            .mapNotNull { mcpClient.getServerInfo(it.id) }
+            .filter { !it.instructions.isNullOrBlank() }
+
+        if (connectedServers.isEmpty()) return null
+
+        val combined = connectedServers.joinToString("\n\n---\n\n") { info ->
+            "[${info.name}] ${info.instructions}"
+        }
+
+        return ChatMessage(
+            role = MessageRole.SYSTEM,
+            content = combined
+        )
+    }
+
+    /**
+     * 构建发送给 API 的消息列表，优先注入 MCP 系统提示词
+     */
+    private fun buildChatMessages(
+        uiMessages: List<ChatUiMessage>,
+        systemMessage: ChatMessage? = null
+    ): List<ChatMessage> {
         // 排除正在加载中的占位消息，保留所有历史消息
         val validMessages = uiMessages.filter { !it.isLoading }
         
         // 如果最后一条消息是正在流式加载中的 assistant 占位，提取其已有内容单独添加
         val pendingAssistant = uiMessages.find { it.isLoading }
         
-        return validMessages.map { ChatMessage(role = it.role, content = it.content) } +
+        val historyMessages = validMessages.map { ChatMessage(role = it.role, content = it.content) } +
             if (pendingAssistant != null) {
                 listOf(ChatMessage(role = MessageRole.ASSISTANT, content = pendingAssistant.content))
             } else {
                 emptyList()
             }
+
+        // 如果有 MCP 系统提示词，放在最前面
+        return if (systemMessage != null) {
+            listOf(systemMessage) + historyMessages
+        } else {
+            historyMessages
+        }
     }
 
     private fun updateAssistantMessage(id: String, content: String, isLoading: Boolean) {
