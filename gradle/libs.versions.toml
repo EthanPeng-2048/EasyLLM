@@ -11,6 +11,8 @@ composeBom = "2026.02.01"
 kotlinxSerializationJson = "1.7.3"
 kotlinxCoroutinesAndroid = "1.9.0"
 okhttp = "4.12.0"
+aallamOpenai = "4.0.0"
+mcpSdk = "0.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -33,6 +35,8 @@ androidx-compose-material-icons-extended = { group = "androidx.compose.material"
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutinesAndroid" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+aallam-openai = { group = "com.aallam.openai", name = "openai-kotlin", version.ref = "aallamOpenai" }
+mcp-sdk = { group = "io.modelcontextprotocol", name = "kotlin-sdk", version.ref = "mcpSdk" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

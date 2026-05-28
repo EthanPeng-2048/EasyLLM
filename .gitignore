@@ -1,58 +1,35 @@
 ```
-# Kotlin/Java build artifacts
+# Gradle
+.gradle/
+build/
+target/
+
+# Dependencies
+.libs.versions.toml.lockfile
+
+# Compiled files
 *.class
 *.jar
 *.war
 *.ear
-*.aar
+*.so
+*.dll
+*.dylib
 
-# Gradle
-.gradle/
-build/
-!gradlew
-
-# IDE files
+# IDE
 .idea/
-*.iml
-*.ipr
-*.iws
+.vscode/
 
-# Compiled Python files (if any Python exists)
-*.pyc
-__pycache__/
-
-# Logs
-*.log
-
-# Environment variables
+# Environment
 .env
 .env.local
 *.env.*
 
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
+# Logs
+*.log
 
 # Temporary files
 *.tmp
-*.swp
-*.swo
-
-# Maven
-target/
-
-# Node.js (if any JS/TS exists)
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Virtual environments
-venv/
-.venv/
+*.temp
+*~
 ```
