@@ -25,7 +25,8 @@ data class ChatUiState(
     val inputText: String = "",
     val isStreaming: Boolean = false,
     val error: String? = null,
-    val selectedModelName: String? = null
+    val selectedModelName: String? = null,
+    val conversationTitle: String = "新对话"
 )
 
 class ChatViewModel(
@@ -35,12 +36,90 @@ class ChatViewModel(
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
+    /** 当前加载的对话 ID，null 表示新对话 */
+    private var currentConversationId: String? = null
+
     init {
         updateModelName()
+        // 尝试加载当前激活的对话
+        loadActiveConversation()
     }
 
     fun onInputChanged(text: String) {
         _uiState.value = _uiState.value.copy(inputText = text)
+    }
+
+    fun startNewConversation() {
+        currentConversationId = null
+        _uiState.value = ChatUiState(
+            selectedModelName = _uiState.value.selectedModelName,
+            conversationTitle = "新对话"
+        )
+        updateModelName()
+    }
+
+    fun loadConversation(conversationId: String) {
+        val conversation = repository.getConversation(conversationId) ?: return
+        currentConversationId = conversation.id
+        repository.setActiveConversation(conversation.id)
+        _uiState.value = _uiState.value.copy(
+            messages = conversation.messages.map { msg ->
+                ChatUiMessage(
+                    id = UUID.randomUUID().toString(),
+                    role = msg.role,
+                    content = msg.content ?: "",
+                    isLoading = false
+                )
+            },
+            conversationTitle = conversation.title
+        )
+    }
+
+    private fun loadActiveConversation() {
+        val conversation = repository.getActiveConversation()
+        if (conversation != null && conversation.messages.isNotEmpty()) {
+            currentConversationId = conversation.id
+            _uiState.value = _uiState.value.copy(
+                messages = conversation.messages.map { msg ->
+                    ChatUiMessage(
+                        id = UUID.randomUUID().toString(),
+                        role = msg.role,
+                        content = msg.content ?: "",
+                        isLoading = false
+                    )
+                },
+                conversationTitle = conversation.title
+            )
+        }
+    }
+
+    /** 将当前内存中的消息保存到 Conversation */
+    private fun saveConversation() {
+        val messages = _uiState.value.messages
+        if (messages.isEmpty()) return
+
+        val chatMessages = messages
+            .filter { !it.isLoading }
+            .map { ChatMessage(role = it.role, content = it.content) }
+
+        val existing = currentConversationId?.let { repository.getConversation(it) }
+
+        if (existing != null) {
+            repository.updateConversation(existing.copy(messages = chatMessages))
+        } else {
+            val firstUserMsg = messages.firstOrNull { it.role == MessageRole.USER }
+            val title = firstUserMsg?.content?.take(30)?.replace("\n", " ") ?: "新对话"
+            val conversation = top.ethan2048.easyllm.core.model.Conversation(
+                id = UUID.randomUUID().toString(),
+                title = title,
+                messages = chatMessages
+            )
+            repository.addConversation(conversation)
+            currentConversationId = conversation.id
+        }
+        // 更新标题
+        val conversationTitle = currentConversationId?.let { repository.getConversation(it) }?.title ?: "新对话"
+        _uiState.value = _uiState.value.copy(conversationTitle = conversationTitle)
     }
 
     fun sendMessage() {
@@ -66,6 +145,9 @@ class ChatViewModel(
             isStreaming = true,
             error = null
         )
+
+        // 发送消息前先保存一次（创建/更新对话）
+        saveConversation()
 
         viewModelScope.launch {
             val pendingId = UUID.randomUUID().toString()
@@ -96,6 +178,8 @@ class ChatViewModel(
                     if (finishReason != null) {
                         finalizeAssistantMessage(pendingId)
                         _uiState.value = _uiState.value.copy(isStreaming = false)
+                        // 流式完成后再次保存（更新 assistant 的完整回复）
+                        saveConversation()
                     }
                 }
         }
@@ -108,6 +192,7 @@ class ChatViewModel(
     fun clearMessages() {
         _uiState.value = ChatUiState(selectedModelName = _uiState.value.selectedModelName)
         updateModelName()
+        currentConversationId = null
     }
 
     fun refreshModelName() {
@@ -130,17 +215,17 @@ class ChatViewModel(
     }
 
     private fun buildChatMessages(uiMessages: List<ChatUiMessage>): List<ChatMessage> {
-        return uiMessages
-            .filter { !it.isLoading && it.role != MessageRole.ASSISTANT }
-            .map { ChatMessage(role = it.role, content = it.content) }
-            .let { list ->
-                // 加上当前正在流式响应的 assistant 消息
-                val pendingAssistant = uiMessages.find { it.isLoading }
-                if (pendingAssistant != null) {
-                    list + ChatMessage(role = MessageRole.ASSISTANT, content = pendingAssistant.content)
-                } else {
-                    list
-                }
+        // 排除正在加载中的占位消息，保留所有历史消息
+        val validMessages = uiMessages.filter { !it.isLoading }
+        
+        // 如果最后一条消息是正在流式加载中的 assistant 占位，提取其已有内容单独添加
+        val pendingAssistant = uiMessages.find { it.isLoading }
+        
+        return validMessages.map { ChatMessage(role = it.role, content = it.content) } +
+            if (pendingAssistant != null) {
+                listOf(ChatMessage(role = MessageRole.ASSISTANT, content = pendingAssistant.content))
+            } else {
+                emptyList()
             }
     }
 

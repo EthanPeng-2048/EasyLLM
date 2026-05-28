@@ -18,14 +18,16 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import top.ethan2048.easyllm.core.model.Vendor
 import top.ethan2048.easyllm.data.AppRepository
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ApiConfigScreen(
     repository: AppRepository,
@@ -48,27 +51,22 @@ fun ApiConfigScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    Column(modifier = modifier.fillMaxSize()) {
-        // 标题
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "供应商",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.weight(1f)
-            )
+    Scaffold(
+        topBar = {
+            TopAppBar(title = { Text("API 设置") })
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { viewModel.showAddDialog() }) {
+                Icon(Icons.Default.Add, contentDescription = "添加供应商")
+            }
         }
-
+    ) { paddingValues ->
         if (state.vendors.isEmpty()) {
             // 空状态
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
                     .padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
@@ -87,33 +85,21 @@ fun ApiConfigScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(state.vendors, key = { it.id }) { vendor ->
                     VendorCard(
                         vendor = vendor,
-                        isActive = vendor.id == repository.activeVendorId,
-                        onSelect = {
-                            viewModel.setActive(vendor.id)
-                            onNavigateToVendorDetail(vendor.id)
-                        },
                         onEdit = { viewModel.showEditDialog(vendor) },
                         onDelete = { viewModel.deleteVendor(vendor.id) },
                         onClick = { onNavigateToVendorDetail(vendor.id) }
                     )
                 }
             }
-        }
-
-        // FAB
-        FloatingActionButton(
-            onClick = { viewModel.showAddDialog() },
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "添加供应商")
         }
     }
 
@@ -132,8 +118,6 @@ fun ApiConfigScreen(
 @Composable
 private fun VendorCard(
     vendor: Vendor,
-    isActive: Boolean,
-    onSelect: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onClick: () -> Unit
@@ -141,10 +125,7 @@ private fun VendorCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isActive)
-                MaterialTheme.colorScheme.primaryContainer
-            else
-                MaterialTheme.colorScheme.surface
+            containerColor = MaterialTheme.colorScheme.surface
         ),
         onClick = onClick
     ) {
@@ -152,11 +133,6 @@ private fun VendorCard(
             modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            RadioButton(
-                selected = isActive,
-                onClick = onSelect
-            )
-            Spacer(modifier = Modifier.padding(8.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = vendor.name,

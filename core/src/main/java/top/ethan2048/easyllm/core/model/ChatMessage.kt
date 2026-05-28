@@ -27,7 +27,7 @@ data class ToolCallFunction(
 @Serializable
 data class ChatMessage(
     val role: MessageRole,
-    val content: String,
+    val content: String? = null,
     @SerialName("tool_call_id") val toolCallId: String? = null,
     @SerialName("tool_calls") val toolCalls: List<ToolCall>? = null
 )

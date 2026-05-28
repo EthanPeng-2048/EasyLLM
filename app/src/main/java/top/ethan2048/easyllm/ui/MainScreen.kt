@@ -1,11 +1,13 @@
 package top.ethan2048.easyllm.ui
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -18,83 +20,141 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cloud
-import androidx.compose.material.icons.filled.DataArray
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import top.ethan2048.easyllm.core.model.Vendor
 import top.ethan2048.easyllm.data.AppRepository
 import top.ethan2048.easyllm.ui.screen.ApiConfigScreen
 import top.ethan2048.easyllm.ui.screen.ChatScreen
+import top.ethan2048.easyllm.ui.screen.ChatViewModel
 import top.ethan2048.easyllm.ui.screen.McpConfigScreen
 import top.ethan2048.easyllm.ui.screen.VendorDetailScreen
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private enum class SidebarContent {
-    NONE,
-    MCP,
-    API
+private enum class Screen {
+    CHAT,
+    API_CONFIG,
+    MCP_CONFIG
 }
 
 @Composable
 fun MainScreen(repository: AppRepository) {
     var showSidebar by remember { mutableStateOf(false) }
-    var sidebarContent by remember { mutableStateOf(SidebarContent.NONE) }
+    var currentScreen by remember { mutableStateOf(Screen.CHAT) }
     var currentVendorId by remember { mutableStateOf<String?>(null) }
+    var showModelSelector by remember { mutableStateOf(false) }
+    var modelRefreshKey by remember { mutableStateOf(0) }
+    var conversationRefreshKey by remember { mutableStateOf(0) }
+
+    // 在 MainScreen 层创建 ChatViewModel，使其可被 Sidebar 回调控制
+    val chatViewModel: ChatViewModel = viewModel(factory = ChatViewModel.Factory(repository))
+
+    // 响应式计算当前选中的模型名称
+    val selectedModelName = remember(modelRefreshKey) {
+        val vid = repository.activeVendorId
+        val mid = repository.activeModelConfigId
+        if (vid != null && mid != null) {
+            val vendor = repository.vendors.find { it.id == vid }
+            val modelConfig = vendor?.models?.find { it.id == mid }
+            if (vendor != null && modelConfig != null) {
+                "${vendor.name} - ${modelConfig.name}"
+            } else null
+        } else null
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        if (currentVendorId != null) {
-            VendorDetailScreen(
-                vendorId = currentVendorId!!,
-                repository = repository,
-                onNavigateBack = { currentVendorId = null }
-            )
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
-                ChatScreen(
-                    repository = repository,
-                    modifier = Modifier.weight(1f)
-                )
-
-                BottomStatusBar(
-                    repository = repository,
-                    onExpandSidebar = {
-                        showSidebar = true
-                        sidebarContent = SidebarContent.NONE
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            // 主内容区域（带动画切换）
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    currentVendorId != null -> {
+                        VendorDetailScreen(
+                            vendorId = currentVendorId!!,
+                            repository = repository,
+                            onNavigateBack = { currentVendorId = null }
+                        )
                     }
-                )
+                    else -> {
+                        AnimatedContent(
+                            targetState = currentScreen,
+                            transitionSpec = {
+                                fadeIn(animationSpec = tween(300)) togetherWith
+                                        fadeOut(animationSpec = tween(300))
+                            },
+                            label = "screen_transition"
+                        ) { screen ->
+                            when (screen) {
+                                Screen.CHAT -> ChatScreen(
+                                    repository = repository,
+                                    modifier = Modifier.fillMaxSize(),
+                                    viewModel = chatViewModel
+                                )
+                                Screen.API_CONFIG -> ApiConfigScreen(
+                                    repository = repository,
+                                    onNavigateToVendorDetail = { vendorId ->
+                                        currentVendorId = vendorId
+                                    },
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                                Screen.MCP_CONFIG -> McpConfigScreen(
+                                    repository = repository,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                }
             }
+
+            // 底栏 — 始终显示
+            BottomStatusBar(
+                selectedModelName = selectedModelName,
+                onExpandSidebar = { showSidebar = true },
+                onSelectModel = { showModelSelector = true }
+            )
         }
 
+        // 遮罩层
         if (showSidebar) {
             Box(
                 modifier = Modifier
@@ -111,6 +171,7 @@ fun MainScreen(repository: AppRepository) {
             )
         }
 
+        // 侧边栏
         AnimatedVisibility(
             visible = showSidebar,
             enter = slideInHorizontally(
@@ -121,44 +182,140 @@ fun MainScreen(repository: AppRepository) {
                 targetOffsetX = { it },
                 animationSpec = tween(300)
             ) + fadeOut(animationSpec = tween(300)),
-            modifier = Modifier.align(Alignment.TopEnd)
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
         ) {
             Sidebar(
                 repository = repository,
-                sidebarContent = sidebarContent,
-                onContentChange = { sidebarContent = it },
                 onClose = { showSidebar = false },
-                onNavigateToVendorDetail = { vendorId ->
+                onNavigateToScreen = { screen ->
                     showSidebar = false
-                    currentVendorId = vendorId
-                }
+                    currentVendorId = null
+                    currentScreen = screen
+                },
+                onNewChat = {
+                    chatViewModel.startNewConversation()
+                    conversationRefreshKey++
+                    showSidebar = false
+                },
+                onLoadConversation = { conversationId ->
+                    chatViewModel.loadConversation(conversationId)
+                    showSidebar = false
+                },
+                refreshKey = conversationRefreshKey
+            )
+        }
+
+        // 模型选择弹窗
+        if (showModelSelector) {
+            ModelSelectorDialog(
+                vendors = repository.vendors,
+                activeVendorId = repository.activeVendorId,
+                activeModelConfigId = repository.activeModelConfigId,
+                onSelect = { vendorId, modelConfigId ->
+                    repository.setActiveVendor(vendorId)
+                    repository.setActiveModelConfig(modelConfigId)
+                    showModelSelector = false
+                    modelRefreshKey++
+                },
+                onDismiss = { showModelSelector = false }
             )
         }
     }
 }
 
 @Composable
-private fun BottomStatusBar(
-    repository: AppRepository,
-    onExpandSidebar: () -> Unit
+private fun ModelSelectorDialog(
+    vendors: List<Vendor>,
+    activeVendorId: String?,
+    activeModelConfigId: String?,
+    onSelect: (vendorId: String, modelConfigId: String) -> Unit,
+    onDismiss: () -> Unit
 ) {
-    val vendors by remember { mutableStateOf(repository.vendors) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择模型") },
+        text = {
+            if (vendors.isEmpty()) {
+                Text(
+                    text = "暂无可用模型，请先在 API 设置中添加供应商和模型",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(vendors) { vendor ->
+                        Text(
+                            text = vendor.name,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                        if (vendor.models.isEmpty()) {
+                            Text(
+                                text = "  暂无模型配置",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            vendor.models.forEach { modelConfig ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            onSelect(vendor.id, modelConfig.id)
+                                        }
+                                        .padding(vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RadioButton(
+                                        selected = vendor.id == activeVendorId && modelConfig.id == activeModelConfigId,
+                                        onClick = {
+                                            onSelect(vendor.id, modelConfig.id)
+                                        }
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = modelConfig.name,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Text(
+                                            text = modelConfig.model,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
+}
 
-    val activeVendorId = repository.activeVendorId
-    val activeModelConfigId = repository.activeModelConfigId
-
-    val selectedModelName = remember(activeVendorId, activeModelConfigId, vendors) {
-        if (activeVendorId != null && activeModelConfigId != null) {
-            val vendor = vendors.find { it.id == activeVendorId }
-            val modelConfig = vendor?.models?.find { it.id == activeModelConfigId }
-            if (vendor != null && modelConfig != null) {
-                "${vendor.name} - ${modelConfig.name}"
-            } else null
-        } else null
-    }
+@Composable
+private fun BottomStatusBar(
+    selectedModelName: String?,
+    onExpandSidebar: () -> Unit,
+    onSelectModel: () -> Unit
+) {
 
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding(),
         color = MaterialTheme.colorScheme.surfaceVariant,
         tonalElevation = 2.dp
     ) {
@@ -169,9 +326,10 @@ private fun BottomStatusBar(
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 模型选择器（可点击）
             Surface(
-                onClick = { },
-                shape = RoundedCornerShape(8.dp),
+                onClick = onSelectModel,
+                shape = MaterialTheme.shapes.small,
                 color = MaterialTheme.colorScheme.primaryContainer,
                 modifier = Modifier.height(36.dp)
             ) {
@@ -196,44 +354,19 @@ private fun BottomStatusBar(
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    Icons.Default.DataArray,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Context: 0 tokens",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
             Spacer(modifier = Modifier.weight(1f))
 
-            Surface(
+            // 三横杠汉堡菜单按钮
+            IconButton(
                 onClick = onExpandSidebar,
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(40.dp)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        Icons.Default.Menu,
-                        contentDescription = "展开菜单",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = "展开菜单",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(28.dp)
+                )
             }
         }
     }
@@ -242,12 +375,13 @@ private fun BottomStatusBar(
 @Composable
 private fun Sidebar(
     repository: AppRepository,
-    sidebarContent: SidebarContent,
-    onContentChange: (SidebarContent) -> Unit,
     onClose: () -> Unit,
-    onNavigateToVendorDetail: (String) -> Unit
+    onNavigateToScreen: (Screen) -> Unit,
+    onNewChat: () -> Unit,
+    onLoadConversation: (conversationId: String) -> Unit,
+    refreshKey: Int
 ) {
-    val conversations by remember { mutableStateOf(repository.conversations) }
+    val conversations by remember(refreshKey) { mutableStateOf(repository.conversations) }
 
     Surface(
         modifier = Modifier
@@ -257,15 +391,23 @@ private fun Sidebar(
         color = MaterialTheme.colorScheme.surface
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // 标题栏
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(16.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                Icon(
+                    Icons.Default.SmartToy,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "菜单",
+                    text = "EasyLLM",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -280,14 +422,31 @@ private fun Sidebar(
                     .weight(1f),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
+                // 对话记录
                 Column(modifier = Modifier.weight(1f)) {
                     HorizontalDivider()
-                    Text(
-                        text = "对话记录",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "对话记录",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        TextButton(onClick = onNewChat) {
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("新建", style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
 
                     if (conversations.isEmpty()) {
                         Text(
@@ -297,16 +456,13 @@ private fun Sidebar(
                             modifier = Modifier.padding(16.dp)
                         )
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.weight(1f)
-                        ) {
+                        LazyColumn(modifier = Modifier.weight(1f)) {
                             items(conversations) { conversation ->
                                 ConversationItem(
                                     conversation = conversation,
                                     isActive = conversation.id == repository.activeConversationId,
                                     onClick = {
-                                        repository.setActiveConversation(conversation.id)
-                                        onClose()
+                                        onLoadConversation(conversation.id)
                                     },
                                     onDelete = {
                                         repository.deleteConversation(conversation.id)
@@ -317,82 +473,43 @@ private fun Sidebar(
                     }
                 }
 
+                // 导航链接
                 Column {
                     HorizontalDivider()
 
                     Text(
-                        text = "设置",
+                        text = "导航",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                     )
 
-                    SidebarItem(
-                        icon = Icons.Default.Extension,
-                        title = "MCP 设置",
-                        subtitle = "配置模型上下文协议",
-                        isExpanded = sidebarContent == SidebarContent.MCP,
+                    SidebarNavItem(
+                        icon = Icons.Default.SmartToy,
+                        title = "对话",
+                        subtitle = "返回聊天界面",
                         onClick = {
-                            onContentChange(
-                                if (sidebarContent == SidebarContent.MCP)
-                                    SidebarContent.NONE
-                                else
-                                    SidebarContent.MCP
-                            )
+                            onNavigateToScreen(Screen.CHAT)
                         }
                     )
 
-                    if (sidebarContent == SidebarContent.MCP) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .padding(horizontal = 8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            McpConfigScreen(
-                                repository = repository,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp)
-                            )
-                        }
-                    }
-
-                    SidebarItem(
+                    SidebarNavItem(
                         icon = Icons.Default.Key,
                         title = "API 设置",
-                        subtitle = "管理供应商和模型",
-                        isExpanded = sidebarContent == SidebarContent.API,
+                        subtitle = "管理供应商和模型配置",
                         onClick = {
-                            onContentChange(
-                                if (sidebarContent == SidebarContent.API)
-                                    SidebarContent.NONE
-                                else
-                                    SidebarContent.API
-                            )
+                            onNavigateToScreen(Screen.API_CONFIG)
                         }
                     )
 
-                    if (sidebarContent == SidebarContent.API) {
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                                .padding(horizontal = 8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            ApiConfigScreen(
-                                repository = repository,
-                                onNavigateToVendorDetail = onNavigateToVendorDetail,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp)
-                            )
+                    SidebarNavItem(
+                        icon = Icons.Default.Extension,
+                        title = "MCP 设置",
+                        subtitle = "配置模型上下文协议服务器",
+                        onClick = {
+                            onNavigateToScreen(Screen.MCP_CONFIG)
                         }
-                    }
+                    )
                 }
             }
         }
@@ -456,21 +573,17 @@ private fun ConversationItem(
 }
 
 @Composable
-private fun SidebarItem(
+private fun SidebarNavItem(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    isExpanded: Boolean,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        color = if (isExpanded)
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        else
-            MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier
@@ -482,10 +595,7 @@ private fun SidebarItem(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = if (isExpanded)
-                    MaterialTheme.colorScheme.primary
-                else
-                    MaterialTheme.colorScheme.onSurface
+                tint = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column {
