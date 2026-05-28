@@ -24,16 +24,16 @@
             height: 100vh;
         }
 
-        /* 侧边栏样式 */
+        /* 侧边栏样式 - 从右侧滑出 */
         .sidebar {
             position: fixed;
-            left: 0;
+            right: 0;
             top: 0;
-            width: 280px;
+            width: 300px;
             height: 100vh;
             background: #fff;
-            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
-            transform: translateX(-100%);
+            box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+            transform: translateX(100%);
             transition: transform 0.3s ease;
             z-index: 100;
             display: flex;
@@ -56,12 +56,64 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end;
+            overflow: hidden;
+        }
+
+        /* 对话记录列表区域 */
+        .chat-list-section {
+            flex: 1;
+            overflow-y: auto;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .section-title {
+            padding: 12px 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #fafafa;
+        }
+
+        .chat-item {
+            padding: 14px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .chat-item:hover {
+            background: #f5f5f5;
+        }
+
+        .chat-item.active {
+            background: #e3f2fd;
+            border-left: 3px solid #1976d2;
+        }
+
+        .chat-item-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chat-item-date {
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* 设置区域 */
+        .settings-section {
+            padding: 12px 0;
         }
 
         .sidebar-item {
-            padding: 16px 20px;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 14px 20px;
             cursor: pointer;
             transition: background 0.2s;
         }
@@ -96,48 +148,39 @@
             overflow-y: auto;
         }
 
-        /* 底部状态栏 */
+        /* 底部状态栏 - 加大高度 */
         .bottom-bar {
-            height: 36px;
+            height: 56px;
             background: #fafafa;
             border-top: 1px solid #e0e0e0;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 16px;
+            padding: 0 20px;
         }
 
         .status-info {
             display: flex;
-            gap: 20px;
-            font-size: 12px;
+            gap: 24px;
+            font-size: 13px;
             color: #666;
         }
 
         .status-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-        }
-
-        .material-symbols-rounded {
-            font-size: 18px;
-            color: #888;
-        }
-
-        /* 展开按钮容器 */
-        .expand-btn-container {
-            position: fixed;
-            bottom: 16px;
-            right: 16px;
-            display: flex;
-            align-items: center;
             gap: 8px;
         }
 
+        .material-symbols-rounded {
+            font-size: 20px;
+            color: #888;
+        }
+
+        /* 展开按钮 */
         .expand-btn {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             background: #1976d2;
             color: white;
@@ -157,7 +200,7 @@
 
         .expand-btn .material-symbols-rounded {
             color: white;
-            font-size: 24px;
+            font-size: 26px;
         }
 
         /* 遮罩层 */
@@ -259,27 +302,48 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- 侧边栏 -->
+        <!-- 遮罩层 -->
+        <div class="overlay" id="overlay"></div>
+
+        <!-- 侧边栏 - 从右侧滑出 -->
         <nav class="sidebar" id="sidebar">
-            <div class="sidebar-header">设置</div>
+            <div class="sidebar-header">菜单</div>
             <div class="sidebar-content">
-                <div class="sidebar-item">
-                    <div class="sidebar-item-title">对话记录</div>
-                    <div class="sidebar-item-desc">查看历史对话</div>
+                <!-- 对话记录列表 -->
+                <div class="chat-list-section">
+                    <div class="section-title">对话记录</div>
+                    <div class="chat-item active">
+                        <div class="chat-item-title">关于Python装饰器的讨论</div>
+                        <div class="chat-item-date">今天 14:30</div>
+                    </div>
+                    <div class="chat-item">
+                        <div class="chat-item-title">JavaScript异步编程问题</div>
+                        <div class="chat-item-date">昨天 21:15</div>
+                    </div>
+                    <div class="chat-item">
+                        <div class="chat-item-title">React组件优化建议</div>
+                        <div class="chat-item-date">3天前</div>
+                    </div>
+                    <div class="chat-item">
+                        <div class="chat-item-title">数据库设计咨询</div>
+                        <div class="chat-item-date">上周</div>
+                    </div>
                 </div>
-                <div class="sidebar-item">
-                    <div class="sidebar-item-title">MCP 设置</div>
-                    <div class="sidebar-item-desc">配置模型上下文协议</div>
-                </div>
-                <div class="sidebar-item">
-                    <div class="sidebar-item-title">API 设置</div>
-                    <div class="sidebar-item-desc">配置API密钥和端点</div>
+
+                <!-- 设置区域 -->
+                <div class="settings-section">
+                    <div class="section-title" style="background: transparent; padding-top: 20px;">设置</div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-item-title">MCP 设置</div>
+                        <div class="sidebar-item-desc">配置模型上下文协议</div>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-item-title">API 设置</div>
+                        <div class="sidebar-item-desc">配置API密钥和端点</div>
+                    </div>
                 </div>
             </div>
         </nav>
-
-        <!-- 遮罩层 -->
-        <div class="overlay" id="overlay"></div>
 
         <!-- 主内容区 -->
         <main class="main-content">
@@ -310,11 +374,9 @@
                         <span>Context: 2,340 tokens</span>
                     </div>
                 </div>
-                <div class="expand-btn-container">
-                    <button class="expand-btn" id="expandBtn" title="展开侧边栏">
-                        <span class="material-symbols-rounded">menu</span>
-                    </button>
-                </div>
+                <button class="expand-btn" id="expandBtn" title="展开侧边栏">
+                    <span class="material-symbols-rounded">menu</span>
+                </button>
             </div>
         </main>
     </div>
