@@ -99,11 +99,15 @@ fun MainScreen(repository: AppRepository) {
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding()
+            ) {
             // 主内容区域（带动画切换）
             Box(modifier = Modifier.weight(1f)) {
                 when {
@@ -152,6 +156,7 @@ fun MainScreen(repository: AppRepository) {
                 onExpandSidebar = { showSidebar = true },
                 onSelectModel = { showModelSelector = true }
             )
+            }
         }
 
         // 遮罩层
