@@ -1,67 +1,58 @@
-# Auto-generated Android/Gradle/IDE ignores
-
-# IntelliJ / Android Studio
-.idea/
-*.iml
-*.iws
+```
+# Kotlin/Java build artifacts
+*.class
+*.jar
+*.war
+*.ear
+*.aar
 
 # Gradle
 .gradle/
-**/build/
-/build/
+build/
+!gradlew
 
-# Local configuration
-local.properties
-keystore.properties
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
 
-# Signing keys
-*.keystore
-*.jks
-debug.keystore
+# Compiled Python files (if any Python exists)
+*.pyc
+__pycache__/
 
-# Built application files
-*.apk
-*.ap_
-*.aab
-
-# Java
-*.class
-
-# Kotlin
-*.kotlin_module
-out/
-
-# Native build
-.cxx/
-.externalNativeBuild/
-
-# Logs and databases
+# Logs
 *.log
-*.sql
-*.sqlite
 
-# Node
-node_modules/
+# Environment variables
+.env
+.env.local
+*.env.*
 
-# Misc
+# OS generated files
 .DS_Store
 Thumbs.db
 
-# Environment / secrets
-*.env
-*.properties
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
+# Coverage reports
+coverage/
+htmlcov/
+.coverage
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+
+# Maven
+target/
+
+# Node.js (if any JS/TS exists)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Virtual environments
+venv/
+.venv/
+```

@@ -1,15 +1,15 @@
-package top.ethan2048.easyllm.core.`interface`
+package top.ethan2048.easyllm.core.domain.api
 
 import kotlinx.coroutines.flow.Flow
-import top.ethan2048.easyllm.core.model.McpEvent
-import top.ethan2048.easyllm.core.model.McpPrompt
-import top.ethan2048.easyllm.core.model.McpPromptResult
-import top.ethan2048.easyllm.core.model.McpResource
-import top.ethan2048.easyllm.core.model.McpResourceContent
-import top.ethan2048.easyllm.core.model.McpServerConfig
-import top.ethan2048.easyllm.core.model.McpServerInfo
-import top.ethan2048.easyllm.core.model.McpTool
-import top.ethan2048.easyllm.core.model.McpToolResult
+import top.ethan2048.easyllm.core.domain.model.mcp.McpEvent
+import top.ethan2048.easyllm.core.domain.model.mcp.McpPrompt
+import top.ethan2048.easyllm.core.domain.model.mcp.McpPromptResult
+import top.ethan2048.easyllm.core.domain.model.mcp.McpResource
+import top.ethan2048.easyllm.core.domain.model.mcp.McpResourceContent
+import top.ethan2048.easyllm.core.domain.model.mcp.McpServerConfig
+import top.ethan2048.easyllm.core.domain.model.mcp.McpServerInfo
+import top.ethan2048.easyllm.core.domain.model.mcp.McpTool
+import top.ethan2048.easyllm.core.domain.model.mcp.McpToolResult
 
 /**
  * MCP 模块对外接口
@@ -49,7 +49,7 @@ interface IMcpClient {
     suspend fun readResource(serverId: String, uri: String): Result<List<McpResourceContent>>
 
     /** 列出资源模板 */
-    suspend fun listResourceTemplates(serverId: String): Result<List<top.ethan2048.easyllm.core.model.McpResourceTemplate>>
+    suspend fun listResourceTemplates(serverId: String): Result<List<top.ethan2048.easyllm.core.domain.model.McpResourceTemplate>>
 
     // ---- Prompts ----
 

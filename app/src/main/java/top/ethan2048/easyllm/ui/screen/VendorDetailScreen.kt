@@ -52,7 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import top.ethan2048.easyllm.core.model.ModelConfig
+import top.ethan2048.easyllm.core.domain.model.ModelConfig
 import top.ethan2048.easyllm.data.AppRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -280,7 +280,7 @@ private fun ModelConfigCard(
 
 @Composable
 private fun VendorEditDialog(
-    vendor: top.ethan2048.easyllm.core.model.Vendor,
+    vendor: top.ethan2048.easyllm.core.domain.model.Vendor,
     onDismiss: () -> Unit,
     onSave: (String, String, String) -> Unit
 ) {
@@ -336,7 +336,7 @@ private fun VendorEditDialog(
 @Composable
 private fun ModelConfigDialog(
     modelConfig: ModelConfig?,
-    availableModels: List<top.ethan2048.easyllm.core.model.Model>,
+    availableModels: List<top.ethan2048.easyllm.core.domain.model.Model>,
     isLoadingModels: Boolean,
     modelLoadError: String?,
     vendorEndpoint: String,

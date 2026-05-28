@@ -16,14 +16,14 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import top.ethan2048.easyllm.core.`interface`.IChatApi
-import top.ethan2048.easyllm.core.model.ApiConfig
-import top.ethan2048.easyllm.core.model.ChatMessage
-import top.ethan2048.easyllm.core.model.ChatResponse
-import top.ethan2048.easyllm.core.model.ChatStreamChunk
-import top.ethan2048.easyllm.core.model.Model
-import top.ethan2048.easyllm.core.model.ModelListResponse
-import top.ethan2048.easyllm.core.model.ToolDefinition
+import top.ethan2048.easyllm.core.domain.api.IChatApi
+import top.ethan2048.easyllm.core.domain.model.ApiConfig
+import top.ethan2048.easyllm.core.domain.model.ChatMessage
+import top.ethan2048.easyllm.core.domain.model.ChatResponse
+import top.ethan2048.easyllm.core.domain.model.ChatStreamChunk
+import top.ethan2048.easyllm.core.domain.model.Model
+import top.ethan2048.easyllm.core.domain.model.ModelListResponse
+import top.ethan2048.easyllm.core.domain.model.ToolDefinition
 
 /**
  * OpenAI 兼容 API 客户端

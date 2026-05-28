@@ -1,4 +1,4 @@
-package top.ethan2048.easyllm.core.model
+package top.ethan2048.easyllm.core.domain.model.mcp
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject

@@ -38,7 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import top.ethan2048.easyllm.core.model.Vendor
+import top.ethan2048.easyllm.core.domain.model.Vendor
 import top.ethan2048.easyllm.data.AppRepository
 
 @OptIn(ExperimentalMaterial3Api::class)

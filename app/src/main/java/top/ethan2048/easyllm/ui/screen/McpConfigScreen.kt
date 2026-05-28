@@ -44,7 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import top.ethan2048.easyllm.core.model.McpTransportType
+import top.ethan2048.easyllm.core.domain.model.McpTransportType
 import top.ethan2048.easyllm.data.AppRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -125,7 +125,7 @@ fun McpConfigScreen(
 
 @Composable
 private fun McpConfigCard(
-    config: top.ethan2048.easyllm.core.model.McpServerConfig,
+    config: top.ethan2048.easyllm.core.domain.model.McpServerConfig,
     connectionState: McpConnectionState?,
     onConnect: () -> Unit,
     onDisconnect: () -> Unit,
@@ -161,8 +161,8 @@ private fun McpConfigCard(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
                             text = when (config.transportType) {
-                                top.ethan2048.easyllm.core.model.McpTransportType.STREAMABLE_HTTP -> "Streamable HTTP"
-                                top.ethan2048.easyllm.core.model.McpTransportType.SSE -> "SSE"
+                                top.ethan2048.easyllm.core.domain.model.McpTransportType.STREAMABLE_HTTP -> "Streamable HTTP"
+                                top.ethan2048.easyllm.core.domain.model.McpTransportType.SSE -> "SSE"
                             },
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
@@ -223,7 +223,7 @@ private fun McpConfigCard(
 
 @Composable
 private fun McpConfigDialog(
-    config: top.ethan2048.easyllm.core.model.McpServerConfig?,
+    config: top.ethan2048.easyllm.core.domain.model.McpServerConfig?,
     onDismiss: () -> Unit,
     onSave: (String, String, String, McpTransportType, String, String) -> Unit
 ) {

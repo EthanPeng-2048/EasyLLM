@@ -7,9 +7,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import top.ethan2048.easyllm.core.model.McpServerConfig
-import top.ethan2048.easyllm.core.model.McpServerInfo
-import top.ethan2048.easyllm.core.model.McpTransportType
+import top.ethan2048.easyllm.core.domain.model.mcp.McpServerConfig
+import top.ethan2048.easyllm.core.domain.model.mcp.McpServerInfo
+import top.ethan2048.easyllm.core.domain.model.mcp.McpTransportType
 import top.ethan2048.easyllm.data.AppRepository
 import java.util.UUID
 
