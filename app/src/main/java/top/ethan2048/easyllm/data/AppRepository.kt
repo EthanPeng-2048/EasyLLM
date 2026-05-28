@@ -10,6 +10,7 @@ import top.ethan2048.easyllm.api.OpenAiClient
 import top.ethan2048.easyllm.core.`interface`.IChatApi
 import top.ethan2048.easyllm.core.`interface`.IMcpClient
 import top.ethan2048.easyllm.core.model.ApiConfig
+import top.ethan2048.easyllm.core.model.Conversation
 import top.ethan2048.easyllm.core.model.McpServerConfig
 import top.ethan2048.easyllm.core.model.Model
 import top.ethan2048.easyllm.core.model.ModelConfig
@@ -39,6 +40,14 @@ class AppRepository(context: Context) {
     /** MCP 配置列表 */
     private val _mcpConfigs = mutableListOf<McpServerConfig>()
     val mcpConfigs: List<McpServerConfig> get() = _mcpConfigs.toList()
+
+    /** 对话列表 */
+    private val _conversations = mutableListOf<Conversation>()
+    val conversations: List<Conversation> get() = _conversations.toList()
+
+    /** 当前选中的对话 ID */
+    var activeConversationId: String? = null
+        private set
 
     /** 当前选中的供应商 ID */
     var activeVendorId: String? = null
@@ -231,6 +240,43 @@ class AppRepository(context: Context) {
         return mcpClient!!
     }
 
+    // ============ 对话管理 ============
+
+    fun addConversation(conversation: Conversation) {
+        _conversations.add(0, conversation)
+        saveConversations()
+    }
+
+    fun updateConversation(conversation: Conversation) {
+        val index = _conversations.indexOfFirst { it.id == conversation.id }
+        if (index >= 0) {
+            _conversations[index] = conversation.copy(updatedAt = System.currentTimeMillis())
+            saveConversations()
+        }
+    }
+
+    fun deleteConversation(conversationId: String) {
+        _conversations.removeAll { it.id == conversationId }
+        if (activeConversationId == conversationId) {
+            activeConversationId = _conversations.firstOrNull()?.id
+        }
+        saveConversations()
+    }
+
+    fun setActiveConversation(conversationId: String) {
+        activeConversationId = conversationId
+        prefs.edit().putString("active_conversation_id", conversationId).apply()
+    }
+
+    fun getConversation(conversationId: String): Conversation? {
+        return _conversations.find { it.id == conversationId }
+    }
+
+    fun getActiveConversation(): Conversation? {
+        val id = activeConversationId ?: return null
+        return _conversations.find { it.id == id }
+    }
+
     // ============ 持久化 ============
 
     private fun loadConfigs() {
@@ -243,8 +289,13 @@ class AppRepository(context: Context) {
             _mcpConfigs.clear()
             _mcpConfigs.addAll(json.decodeFromString<List<McpServerConfig>>(mcpJson))
 
+            val conversationJson = prefs.getString("conversations", "[]") ?: "[]"
+            _conversations.clear()
+            _conversations.addAll(json.decodeFromString<List<Conversation>>(conversationJson))
+
             activeVendorId = prefs.getString("active_vendor_id", _vendors.firstOrNull()?.id)
             activeModelConfigId = prefs.getString("active_model_config_id", null)
+            activeConversationId = prefs.getString("active_conversation_id", _conversations.firstOrNull()?.id)
         } catch (_: Exception) {
             // 解析失败时使用空列表
         }
@@ -256,5 +307,9 @@ class AppRepository(context: Context) {
 
     private fun saveMcpConfigs() {
         prefs.edit().putString("mcp_configs", json.encodeToString(_mcpConfigs)).apply()
+    }
+
+    private fun saveConversations() {
+        prefs.edit().putString("conversations", json.encodeToString(_conversations)).apply()
     }
 }
